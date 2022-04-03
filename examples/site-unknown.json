@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1",
+  "site": "example handbook whose export is missing evidence",
+  "contexts": [
+    { "id": "article-body", "kind": "editorial" }
+  ],
+  "targets": [
+    { "id": "/docs/", "title": "Documentation" }
+  ],
+  "anchors": [
+    { "from": "/blog/a", "to": "/docs/", "context": "article-body", "text": "the documentation", "locale": "en" },
+    { "from": "/blog/a", "to": "/docs/", "context": "sidebar-promo", "text": "the documentation", "locale": "en" },
+    { "from": "/blog/a", "to": "/changelog", "context": "article-body", "text": "the changelog", "locale": "en" },
+    { "from": "/blog/b", "to": "/docs/", "context": "article-body", "labelledBy": "heading-3 note-1", "locale": "en" },
+    { "from": "/blog/c", "to": "/docs/", "context": "article-body", "text": "read the documentation" }
+  ]
+}

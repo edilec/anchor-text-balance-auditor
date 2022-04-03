@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "1",
+  "anchors": [
+    { "from": "/blog/link-text", "to": "/docs/", "context": "article-body", "text": "Documentation" },
+    { "from": "/blog/link-text", "to": "/contact", "context": "article-body", "text": "ask us about a migration" },
+    { "from": "/blog/link-text", "to": "/pricing", "context": "article-body", "text": "how the plans are priced" },
+    { "from": "/blog/link-text", "to": "/", "context": "article-body", "text": "back to the handbook home page", "locale": "en" }
+  ]
+}

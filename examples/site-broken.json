@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1",
+  "site": "example handbook with deliberate anchor defects",
+  "defaultLocale": "en",
+  "contexts": [
+    { "id": "header-nav", "kind": "navigation" },
+    { "id": "article-body", "kind": "editorial" }
+  ],
+  "targets": [
+    { "id": "/", "title": "Home" },
+    { "id": "/docs/", "title": "Documentation", "aliases": ["Docs"] },
+    { "id": "/pricing", "title": "Pricing" },
+    { "id": "/support", "title": "Support" }
+  ],
+  "anchors": [
+    { "from": "/blog/a", "to": "/docs/", "context": "article-body" },
+    { "from": "/blog/a", "to": "/pricing", "context": "article-body", "hasImage": true },
+    { "from": "/blog/b", "to": "/support", "context": "article-body", "hasImage": true, "imageAlt": "" },
+    { "from": "/blog/b", "to": "/support", "context": "article-body", "text": "Pricing" },
+
+    { "from": "/blog/a", "to": "/docs/", "context": "article-body", "text": "read the guide" },
+    { "from": "/blog/b", "to": "/docs/", "context": "article-body", "text": "read the guide" },
+    { "from": "/blog/c", "to": "/docs/", "context": "article-body", "text": "Read the guide" },
+    { "from": "/blog/d", "to": "/docs/", "context": "article-body", "text": "read the  guide" },
+
+    { "from": "/blog/c", "to": "/pricing", "context": "article-body", "text": "learn more" },
+    { "from": "/blog/d", "to": "/support", "context": "article-body", "text": "learn more" },
+
+    { "from": "/blog/a", "to": "/", "context": "header-nav", "hasImage": true, "imageAlt": "Example handbook home" },
+    { "from": "/blog/b", "to": "/", "context": "header-nav", "hasImage": true, "imageAlt": "Example handbook home" }
+  ]
+}
