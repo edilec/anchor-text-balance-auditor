@@ -286,7 +286,7 @@ export function auditAnchors({ anchors, targets, contexts, defaultLocale, limits
         message: `Context "${contextId}" is used by ${entry.count} anchor(s) but never declared, so those anchors could not be scored as navigation or editorial.`,
         file: entry.source.file,
         pointer: entry.source.pointer,
-        evidence: listSome(entry.samples, limits.maxListed),
+        evidence: listSome(entry.samples, limits.maxListed, entry.count),
         suggestion: `Declare "${contextId}" in "contexts" with a kind of navigation or editorial.`,
       }),
     )
@@ -301,7 +301,7 @@ export function auditAnchors({ anchors, targets, contexts, defaultLocale, limits
         message: `Target "${targetId}" is linked from ${entry.count} anchor(s) but is not declared in "targets", so its anchor text could not be compared against its name.`,
         file: entry.source.file,
         pointer: entry.source.pointer,
-        evidence: listSome(entry.samples, limits.maxListed),
+        evidence: listSome(entry.samples, limits.maxListed, entry.count),
         suggestion: 'Add the target to "targets", or drop the anchors that point at it from the export.',
       }),
     )

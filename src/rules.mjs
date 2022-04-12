@@ -148,10 +148,14 @@ export function excerpt(value) {
 /**
  * Join a bounded list of export-derived strings for a message or evidence
  * field. Exceeding the limit says so rather than trailing off silently.
+ *
+ * `total` is how many values there really are, which may be larger than
+ * `values` when the caller stopped collecting samples at the limit. Passing it
+ * keeps the "+N more" honest instead of implying the list was complete.
  */
-export function listSome(values, limit) {
+export function listSome(values, limit, total = values.length) {
   const shown = values.slice(0, limit).map((value) => excerpt(value))
-  const hidden = values.length - shown.length
+  const hidden = Math.max(total - shown.length, 0)
   return hidden > 0 ? `${shown.join(', ')} (+${hidden} more)` : shown.join(', ')
 }
 
