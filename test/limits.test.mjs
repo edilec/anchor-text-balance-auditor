@@ -163,6 +163,15 @@ test('maxListed bounds every list that reaches the output, and says how many it 
   assert.equal(undeclared.evidence, '/page-0, /page-1 (+3 more)')
   assert.match(undeclared.message, /linked from 5 anchor\(s\)/)
 
+  // The same bound, on the other finding that samples rather than collects.
+  const contexts = audit(
+    { anchors: anchorsTo('/docs/', 5).map((anchor) => ({ ...anchor, context: 'promo' })) },
+    { maxListed: 2, maxEditorialRepeats: 99 },
+  )
+  const undeclaredContext = contexts.findings.find((finding) => finding.ruleId === 'context-undeclared')
+  assert.equal(undeclaredContext.evidence, '/page-0, /page-1 (+3 more)')
+  assert.match(undeclaredContext.message, /used by 5 anchor\(s\)/)
+
   // The bounded list never shortens the exact count it summarises.
   const variant = report.groups[0].variants[0]
   assert.equal(variant.count, 5)
