@@ -1,17 +1,51 @@
 {
   "name": "anchor-text-balance-auditor",
-  "version": "0.0.0",
-  "description": "Review internal anchor text distribution for clarity and natural coverage.",
+  "version": "0.1.0",
+  "description": "Audit an export of internal anchors: compute each anchor's accessible name, group the variants by target, context and locale, and report empty, misleading or over-repeated link text.",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test"
+    "lint": "node --check src/rules.mjs && node --check src/export.mjs && node --check src/anchors.mjs && node --check src/index.mjs && node --check bin/anchor-text-balance-auditor.mjs && node --check test/anchors.test.mjs && node --check test/grouping.test.mjs && node --check test/export.test.mjs && node --check test/incomplete.test.mjs && node --check test/severity-table.test.mjs && node --check test/determinism.test.mjs && node --check test/limits.test.mjs && node --check test/cli.test.mjs",
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/**",
+    "example": "node bin/anchor-text-balance-auditor.mjs --export examples/site-clean.json",
+    "pack:check": "npm pack --dry-run",
+    "check": "npm run lint && npm test && npm run example && npm run pack:check"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/edilec/anchor-text-balance-auditor"
-  }
+    "url": "git+https://github.com/edilec/anchor-text-balance-auditor.git"
+  },
+  "bin": {
+    "anchor-text-balance-auditor": "./bin/anchor-text-balance-auditor.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "examples",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "anchor-text",
+    "internal-links",
+    "accessible-name",
+    "link-text",
+    "accessibility",
+    "seo",
+    "cli"
+  ],
+  "author": "Edilec Private Limited",
+  "bugs": {
+    "url": "https://github.com/edilec/anchor-text-balance-auditor/issues"
+  },
+  "homepage": "https://github.com/edilec/anchor-text-balance-auditor#readme"
 }
