@@ -239,6 +239,37 @@ test('export content cannot forge a line in the human report', async (t) => {
   )
 })
 
+test('a shard file name cannot forge a line in the human report either', async (t) => {
+  const directory = await workspace(t)
+  // A POSIX file name may contain a newline, and include paths come from the
+  // export -- untrusted data. The name reaches location.file, so it is
+  // flattened there exactly as a message is.
+  const name = 'shard\nERROR   forged.json forged-rule a line no finding stands behind.json'
+  await writeFile(join(directory, name), JSON.stringify({ schemaVersion: '9' }))
+  const path = await fixture(directory, 'export.json', {
+    schemaVersion: '1',
+    defaultLocale: 'en',
+    include: [name],
+    contexts: [{ id: 'body', kind: 'editorial' }],
+    targets: [{ id: '/docs/', title: 'Documentation' }],
+    anchors: [{ from: '/a', to: '/docs/', context: 'body', text: 'the documentation' }],
+  })
+
+  const human = await runCli(['--export', path])
+  const lines = human.stdout.split('\n')
+
+  assert.equal(lines.at(-1), '')
+  // Five header lines and one line for the single finding.
+  assert.equal(lines.length - 1, 6)
+  assert.equal(lines.filter((line) => line.startsWith('ERROR')).length, 1)
+  assert.equal(lines.filter((line) => line.includes('forged-rule')).length, 1)
+
+  const json = await runCli(['--export', path, '--json'])
+  const report = JSON.parse(json.stdout)
+  assert.equal(report.findings[0].ruleId, 'export-invalid')
+  assert.equal(report.findings[0].location.file.includes('\nERROR'), true)
+})
+
 test('the packaged bin is executable and self-contained', async () => {
   const { stdout } = await runCli(['--export', join(EXAMPLES, 'anchors', 'blog.json'), '--json'])
   const report = JSON.parse(stdout)
