@@ -17,7 +17,7 @@
  * findings, groups and counts, so the rules are testable without a filesystem.
  */
 
-import { listSome, makeFinding } from './rules.mjs'
+import { listSome, makeFinding, singleLine } from './rules.mjs'
 
 /**
  * Grouping key for an anchor name.
@@ -362,19 +362,24 @@ export function auditAnchors({ anchors, targets, contexts, defaultLocale, limits
       }
     }
 
+    // Grouping, counting and ordering all use the raw ids; only the copies
+    // that reach the report are flattened. A locale tag, a target id, an
+    // anchor name and a page id are export content, and `groups` carries them
+    // into stdout exactly as a finding's message does.
     reportedGroups.push({
-      locale: group.locale,
+      locale: singleLine(group.locale),
       context: group.context,
-      target: group.target,
+      target: singleLine(group.target),
       variants: variants.map((variant) => ({
-        name: variant.name,
-        example: variant.example,
+        name: singleLine(variant.name),
+        example: singleLine(variant.example),
         nameSource: variant.source,
         count: variant.count,
         pages: variant.pages.size,
         sources: [...variant.sources]
           .sort((left, right) => compareParts([left], [right]))
-          .slice(0, limits.maxListed),
+          .slice(0, limits.maxListed)
+          .map((page) => singleLine(page)),
       })),
     })
   }

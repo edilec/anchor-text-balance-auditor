@@ -197,7 +197,7 @@ test('--root confines the run, and a shard outside it is refused by the CLI', as
   assert.match(result.stderr, /outside the export root/)
 })
 
-test('export content cannot forge a line in the human report', async (t) => {
+test('export content cannot forge a line in either report', async (t) => {
   const directory = await workspace(t)
   // Ids that try to write their own report lines: a newline plus a severity
   // word, and a U+2028 line separator that several consumers treat as a break.
@@ -226,20 +226,28 @@ test('export content cannot forge a line in the human report', async (t) => {
   assert.equal(lines.filter((line) => line.includes('forged-rule')).length, 2)
   assert.equal(human.stdout.includes('\u2028'), false)
 
-  // The JSON report keeps the bytes as they were; JSON escapes them.
+  // The JSON report is flattened too. JSON.stringify does NOT escape U+2028,
+  // U+2029 or U+0085, so leaving the raw bytes in a message would hand a
+  // line-oriented JSON consumer exactly the forged line the human report
+  // refused. The text itself survives; only the break is neutralised.
   const json = await runCli(['--export', path, '--json'])
   const report = JSON.parse(json.stdout)
+  assert.equal(json.stdout.includes('\u2028'), false)
   assert.equal(
     report.findings.some((finding) => finding.message.includes('\nERROR')),
+    false,
+  )
+  assert.equal(
+    report.findings.some((finding) => finding.message.includes('/a ERROR   forged.json')),
     true,
   )
   assert.equal(
-    report.findings.some((finding) => finding.message.includes('\u2028')),
+    report.findings.some((finding) => finding.message.includes('promo ERROR   forged.json')),
     true,
   )
 })
 
-test('a shard file name cannot forge a line in the human report either', async (t) => {
+test('a shard file name cannot forge a line in either report', async (t) => {
   const directory = await workspace(t)
   // A POSIX file name may contain a newline, and include paths come from the
   // export -- untrusted data. The name reaches location.file, so it is
@@ -267,7 +275,93 @@ test('a shard file name cannot forge a line in the human report either', async (
   const json = await runCli(['--export', path, '--json'])
   const report = JSON.parse(json.stdout)
   assert.equal(report.findings[0].ruleId, 'export-invalid')
-  assert.equal(report.findings[0].location.file.includes('\nERROR'), true)
+  assert.equal(report.findings[0].location.file.includes('\nERROR'), false)
+  assert.equal(report.findings[0].location.file.startsWith('shard ERROR   forged.json'), true)
+})
+
+/**
+ * Every class of character that can forge, reverse or hide a line, arriving
+ * through an IDENTIFIER rather than through an excerpt of content.
+ *
+ * A page id, a context id, a target id and a locale tag are all export
+ * content, and each of them reaches stdout through a message, a suggestion, an
+ * evidence list, a `location.file` or a `groups` entry. C1 is the class most
+ * often missed: U+0085 ends a line for Python's splitlines and U+009B is the
+ * 8-bit CSI a terminal obeys, and JSON.stringify escapes neither.
+ */
+const FORGERY = Object.freeze([
+  ['C0 NUL', '\u0000'],
+  ['C0 ESC', '\u001b'],
+  ['DEL', '\u007f'],
+  ['C1 NEL', '\u0085'],
+  ['C1 CSI', '\u009b'],
+  ['line separator', '\u2028'],
+  ['paragraph separator', '\u2029'],
+  ['left-to-right mark', '\u200e'],
+  ['right-to-left override', '\u202e'],
+  ['first strong isolate', '\u2068'],
+])
+
+test('no control, separator or bidi character survives into either report', async (t) => {
+  const directory = await workspace(t)
+  const mark = (index) => FORGERY[index][1]
+  const target = `/docs/${mark(8)}gnp.txt`
+  const path = await fixture(directory, 'export.json', {
+    schemaVersion: '1',
+    contexts: [{ id: 'body', kind: 'editorial' }],
+    targets: [{ id: target, title: `Doc${mark(3)}umentation` }],
+    anchors: [
+      // Identifiers, not content: the page id, the target id, the context id
+      // and the locale tag each reach the report on their own.
+      {
+        from: `/a${mark(0)}${mark(3)}ERROR forged`,
+        to: target,
+        context: 'body',
+        locale: `en${mark(7)}-GB`,
+        text: `the${mark(9)} docum${mark(4)}entation`,
+      },
+      {
+        from: `/b${mark(5)}ERROR forged`,
+        to: '/elsewhere',
+        context: `promo${mark(1)}[1m`,
+        text: 'elsewhere',
+      },
+      { from: `/c${mark(2)}x`, to: target, context: 'body', locale: `en${mark(7)}-GB` },
+    ],
+  })
+
+  for (const argv of [[], ['--json']]) {
+    const result = await runCli(['--export', path, ...argv])
+    for (const [label, character] of FORGERY) {
+      assert.equal(
+        result.stdout.includes(character),
+        false,
+        `${label} reached stdout${argv.length > 0 ? ' in the JSON report' : ''}`,
+      )
+    }
+  }
+
+  const report = JSON.parse((await runCli(['--export', path, '--json'])).stdout)
+  // Flattened, not dropped: the surrounding text is still there to read.
+  const undeclared = report.findings.find((finding) => finding.ruleId === 'context-undeclared')
+  assert.equal(undeclared.message.startsWith('Context "promo [1m" is used by 1 anchor(s)'), true)
+  assert.equal(undeclared.suggestion.startsWith('Declare "promo [1m"'), true)
+  assert.equal(undeclared.evidence, '/b ERROR forged')
+  const empty = report.findings.find((finding) => finding.ruleId === 'empty-anchor-text')
+  assert.equal(empty.evidence, '/docs/ gnp.txt')
+  // And the same for the strings `groups` carries, which are export content too.
+  const group = report.groups.find((entry) => entry.target === '/docs/ gnp.txt')
+  assert.equal(group.locale, 'en -GB')
+  assert.deepEqual(group.variants[0].sources, ['/a  ERROR forged'])
+  // Two spaces: the name was folded before it was flattened, and neither the
+  // isolate nor the NEL is whitespace to collapse.
+  assert.equal(group.variants[0].name, 'the  docum entation')
+
+  // One line per finding in the human report, whatever the ids tried to be.
+  const human = await runCli(['--export', path])
+  const lines = human.stdout.split('\n')
+  assert.equal(lines.at(-1), '')
+  assert.equal(lines.length - 1, 5 + report.findings.length)
 })
 
 test('the packaged bin is executable and self-contained', async () => {

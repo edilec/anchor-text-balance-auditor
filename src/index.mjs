@@ -306,9 +306,12 @@ const SEVERITY_WIDTH = 7
  * `severity` and `ruleId` come from the frozen table, but `location.file` and
  * `message` carry export-derived text: an anchor's text, a page id, a context
  * id or a locale tag may hold a newline, and printing it raw would let an
- * export forge finding lines that no finding stands behind. Every such field is
- * flattened before it is printed. The JSON report keeps the bytes as they were;
- * JSON escapes them.
+ * export forge finding lines that no finding stands behind.
+ *
+ * Both are already flattened by `makeFinding`, because the JSON report is
+ * line-oriented to plenty of consumers too and `JSON.stringify` escapes none
+ * of U+2028, U+2029 or U+0085. Flattening again here costs nothing and keeps
+ * the guarantee true for a report this function is handed from elsewhere.
  */
 export function formatReport(report) {
   const { summary } = report

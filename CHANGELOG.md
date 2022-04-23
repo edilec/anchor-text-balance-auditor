@@ -54,7 +54,8 @@ renaming one is a breaking change and is recorded as such.
   disagree, declared in the opposite order, so `localeCompare` cannot be substituted unnoticed.
 - The human report prints exactly one line per finding: ids, paths and messages are flattened, so an
   anchor id holding a newline or U+2028 cannot forge a line no finding stands behind. The JSON
-  report keeps the bytes as they were.
+  report is flattened identically -- `JSON.stringify` escapes neither U+2028, U+2029 nor U+0085 --
+  and so are the bidi controls that reverse or hide displayed text.
 - The guard that refuses a non-regular export file is defended by a named pipe, which blocks forever
   without it; a directory cannot stand in, because reading one fails anyway.
 

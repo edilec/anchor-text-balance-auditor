@@ -110,9 +110,24 @@ export const INCOMPLETE_RULES = Object.freeze([
 
 const EVIDENCE_LIMIT = 160
 // Everything a line-oriented consumer may treat as a line break or a control
-// sequence: C0 controls, DEL, the C1 range (U+0085 NEL included -- Python's
-// splitlines breaks on it), and the two Unicode line separators.
-const UNPRINTABLE = new RegExp('[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]', 'g')
+// sequence, plus everything that can misrepresent the text it is printed in:
+//
+//   C0        U+0000-U+001F  newline, carriage return, ESC and the rest
+//   DEL       U+007F
+//   C1        U+0080-U+009F  U+0085 NEL ends a line for Python's splitlines,
+//                            U+009B is the 8-bit CSI a terminal obeys
+//   line/para U+2028, U+2029  a line break to several JSON consumers
+//   bidi      U+200E, U+200F, U+202A-U+202E, U+2066-U+2069
+//                            U+202E RIGHT-TO-LEFT OVERRIDE reverses everything
+//                            printed after it, so an id can display as another
+//
+// Characters that are merely invisible -- a zero-width space, a soft hyphen --
+// are left alone: they cannot forge a line or reverse one, and the docs say
+// outright that a name made of them still counts as a name.
+const UNPRINTABLE = new RegExp(
+  '[\\u0000-\\u001f\\u007f-\\u009f\\u200e\\u200f\\u2028\\u2029\\u202a-\\u202e\\u2066-\\u2069]',
+  'g',
+)
 
 /** Plain code-unit ordering. Locale collation varies with the ICU data a Node build ships. */
 export function byCodeUnit(left, right) {
@@ -166,20 +181,27 @@ export function isRecord(value) {
 /**
  * Build one finding. Severity is never passed in: it is looked up, so a caller
  * cannot quietly downgrade a refusal at its construction site.
+ *
+ * Every string on a finding is flattened HERE, at the one place findings are
+ * built, and not at the place they are printed. A message interpolates page
+ * ids, target ids, context ids and anchor text; `location.file` is a shard name
+ * the export chose. All of it is export content -- data, never an instruction
+ * and never a report line of its own -- and it reaches the JSON report just as
+ * surely as it reaches the human one, so neither report carries the raw bytes.
  */
 export function makeFinding({ ruleId, message, file, pointer, evidence, suggestion }) {
   const location = {}
-  if (typeof file === 'string' && file !== '') location.file = file
-  if (typeof pointer === 'string' && pointer !== '') location.pointer = pointer
+  if (typeof file === 'string' && file !== '') location.file = singleLine(file)
+  if (typeof pointer === 'string' && pointer !== '') location.pointer = singleLine(pointer)
 
   const finding = {
     ruleId,
     severity: severityOf(ruleId),
-    message: String(message),
+    message: singleLine(message),
     location,
   }
   if (evidence !== undefined) finding.evidence = excerpt(evidence)
-  if (suggestion !== undefined) finding.suggestion = String(suggestion)
+  if (suggestion !== undefined) finding.suggestion = singleLine(suggestion)
   return finding
 }
 

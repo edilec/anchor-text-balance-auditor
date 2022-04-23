@@ -164,7 +164,7 @@ Anchor variants are grouped by **target, context kind and locale**. Each group i
 }
 ```
 
-`name` is the folded grouping key, `example` the first raw name seen for it, `count` the exact
+`name` is the folded grouping key, `example` the first name seen for it, `count` the exact
 number of anchors, `pages` the number of distinct `from` pages, and `sources` a list of `from`
 pages bounded by `maxListed` — `count` is exact even when `sources` is truncated.
 
@@ -240,6 +240,31 @@ not a positive integer, is a configuration error.
   Node builds and has already produced a real ordering difference in this catalog.
 - No wall-clock time, locale, hash-map iteration order or filesystem enumeration order affects
   output. Running the tool twice over identical inputs produces byte-identical stdout.
+
+## Text that reaches the report
+
+A page id, a target id, a context id, a locale tag and an anchor's text are export content: data,
+never an instruction, and never a report line of their own. Before any of them reaches a message, a
+suggestion, an evidence list, a `location.file` or a `groups` entry, these characters are replaced
+with a space:
+
+| Class | Code points | Why |
+| --- | --- | --- |
+| C0 | U+0000-U+001F | A newline forges a finding line; ESC starts a terminal sequence. |
+| DEL | U+007F | |
+| C1 | U+0080-U+009F | U+0085 NEL ends a line for Python's `splitlines`; U+009B is the 8-bit CSI. |
+| Separators | U+2028, U+2029 | A line break to several JSON and JavaScript consumers. |
+| Bidi | U+200E, U+200F, U+202A-U+202E, U+2066-U+2069 | U+202E reverses everything displayed after it, so one id can read as another. |
+
+**Both reports are flattened, not just the human one.** `JSON.stringify` escapes none of U+2028,
+U+2029 and U+0085, so a raw byte left in a message would hand a line-oriented consumer of the JSON
+report the line the human report refused. Flattening happens where findings and groups are built,
+so there is one place to remove it from rather than one per printing site.
+
+Characters that are merely invisible — a zero-width space, a soft hyphen — are left exactly as they
+arrived: they cannot forge a line or reverse one, and a name made of them still counts as a name.
+Nothing is deleted, so text around a flattened character stays readable, and lengths are bounded
+separately by `maxListed` and the 160-character evidence excerpt.
 
 ## Streams and exit codes
 
