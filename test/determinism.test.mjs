@@ -74,6 +74,92 @@ test('findings sort by file, then pointer, then rule id', () => {
 })
 
 test('two findings on one anchor sort by rule id', () => {
+  // One anchor that is BOTH empty AND in a context nobody declared, so both
+  // findings land on the same file and the same pointer and the rule id is the
+  // only key left to order them. Rule id order and message order disagree
+  // here on purpose: "context-undeclared" sorts before "empty-anchor-text",
+  // while "Anchor from ..." sorts before "Context ...". A fixture where the
+  // two agree cannot fail if the rule id key is deleted.
+  const report = auditExportDocuments({
+    documents: [
+      {
+        file: 'export.json',
+        data: {
+          schemaVersion: '1',
+          defaultLocale: 'en',
+          contexts: [],
+          targets: [{ id: '/docs/', title: 'Documentation' }],
+          anchors: [{ from: '/a', to: '/docs/', context: 'sidebar' }],
+        },
+      },
+    ],
+  })
+
+  assert.deepEqual(
+    report.findings.map((finding) => [finding.location.pointer, finding.ruleId]),
+    [
+      ['/anchors/0', 'context-undeclared'],
+      ['/anchors/0', 'empty-anchor-text'],
+    ],
+  )
+  assert.equal(report.findings[0].message.startsWith('Context "sidebar"'), true)
+  assert.equal(report.findings[1].message.startsWith('Anchor from "/a"'), true)
+})
+
+/**
+ * Page ids chosen so code-unit order and collation genuinely disagree: by code
+ * unit "/Mike" < "/Zulu" < "/alpha" < "/bravo", by collation alpha, bravo,
+ * Mike, Zulu. They are declared in collation order, so BOTH substituting a
+ * collator and deleting the sort leave them in the declared order and fail.
+ */
+const SCRAMBLED_PAGES = Object.freeze(['/alpha', '/bravo', '/Mike', '/Zulu'])
+const CODE_UNIT_PAGES = '/Mike, /Zulu, /alpha, /bravo'
+
+function repetition(context, kind) {
+  return auditExportDocuments({
+    documents: [
+      {
+        file: 'export.json',
+        data: {
+          schemaVersion: '1',
+          defaultLocale: 'en',
+          contexts: [{ id: context, kind }],
+          targets: [{ id: '/docs/' }],
+          anchors: SCRAMBLED_PAGES.map((page) => ({
+            from: page,
+            to: '/docs/',
+            context,
+            text: 'the guide',
+          })),
+        },
+      },
+    ],
+  })
+}
+
+test('an over-repetition lists its pages in code-unit order', () => {
+  const report = repetition('body', 'editorial')
+
+  assert.deepEqual(
+    report.findings.map((finding) => finding.ruleId),
+    ['over-repeated-anchor-text'],
+  )
+  assert.equal(report.findings[0].evidence, CODE_UNIT_PAGES)
+})
+
+test('an expected navigation repetition lists its pages in the same order', () => {
+  const report = repetition('nav', 'navigation')
+
+  assert.deepEqual(
+    report.findings.map((finding) => finding.ruleId),
+    ['navigation-repetition-expected'],
+  )
+  assert.equal(report.findings[0].evidence, CODE_UNIT_PAGES)
+})
+
+test('a misleading anchor lists the targets that own its text in code-unit order', () => {
+  // "/Zeta" and "/alpha" share the declared title, and are declared in
+  // collation order so an unsorted or collated list reads "/alpha, /Zeta".
   const report = auditExportDocuments({
     documents: [
       {
@@ -82,8 +168,12 @@ test('two findings on one anchor sort by rule id', () => {
           schemaVersion: '1',
           defaultLocale: 'en',
           contexts: [{ id: 'body', kind: 'editorial' }],
-          targets: [],
-          anchors: [{ from: '/a', to: '/undeclared', context: 'body' }],
+          targets: [
+            { id: '/alpha', title: 'Pricing' },
+            { id: '/Zeta', aliases: ['Pricing'] },
+            { id: '/docs/', title: 'Documentation' },
+          ],
+          anchors: [{ from: '/a', to: '/docs/', context: 'body', text: 'Pricing' }],
         },
       },
     ],
@@ -91,8 +181,76 @@ test('two findings on one anchor sort by rule id', () => {
 
   assert.deepEqual(
     report.findings.map((finding) => finding.ruleId),
-    ['empty-anchor-text', 'target-undeclared'],
+    ['misleading-anchor-text'],
   )
+  assert.equal(
+    report.findings[0].message,
+    'Anchor on "/a" reads as the declared name of /Zeta, /alpha but links to "/docs/".',
+  )
+})
+
+test('an ambiguous anchor text lists its targets in code-unit order', () => {
+  // Declared and linked in collation order, expected back in code-unit order.
+  const report = auditExportDocuments({
+    documents: [
+      {
+        file: 'export.json',
+        data: {
+          schemaVersion: '1',
+          defaultLocale: 'en',
+          contexts: [{ id: 'body', kind: 'editorial' }],
+          targets: [{ id: '/alpha', title: 'Plans' }, { id: '/Zeta', title: 'Support' }],
+          anchors: [
+            { from: '/a', to: '/alpha', context: 'body', text: 'learn more' },
+            { from: '/b', to: '/Zeta', context: 'body', text: 'learn more' },
+          ],
+        },
+      },
+    ],
+  })
+
+  assert.deepEqual(
+    report.findings.map((finding) => finding.ruleId),
+    ['ambiguous-anchor-text'],
+  )
+  assert.equal(report.findings[0].evidence, '/Zeta, /alpha')
+})
+
+test('findings about undeclared ids come out in first-use order, not id order', () => {
+  // Each of these findings is located at the first anchor that used the id, so
+  // the pointer decides their order and "zulu" precedes "Alpha" even though
+  // every ordering rule there is would put "Alpha" first. Dropping the pointer
+  // key from the finding sort leaves the rule id and then the message, and the
+  // message starts with the id.
+  const report = auditExportDocuments({
+    documents: [
+      {
+        file: 'export.json',
+        data: {
+          schemaVersion: '1',
+          defaultLocale: 'en',
+          contexts: [],
+          targets: [],
+          anchors: [
+            { from: '/p', to: '/zulu', context: 'zulu', text: 'one' },
+            { from: '/q', to: '/Alpha', context: 'Alpha', text: 'two' },
+          ],
+        },
+      },
+    ],
+  })
+
+  assert.deepEqual(
+    report.findings.map((finding) => [finding.location.pointer, finding.ruleId, finding.evidence]),
+    [
+      ['/anchors/0', 'context-undeclared', '/p'],
+      ['/anchors/0', 'target-undeclared', '/p'],
+      ['/anchors/1', 'context-undeclared', '/q'],
+      ['/anchors/1', 'target-undeclared', '/q'],
+    ],
+  )
+  assert.equal(report.findings[0].message.startsWith('Context "zulu"'), true)
+  assert.equal(report.findings[2].message.startsWith('Context "Alpha"'), true)
 })
 
 test('groups sort by locale, then context kind, then target', () => {

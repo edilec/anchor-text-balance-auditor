@@ -277,9 +277,10 @@ export function auditAnchors({ anchors, targets, contexts, defaultLocale, limits
     nameTargets.get(nameKey).targets.add(anchor.to)
   }
 
-  for (const [contextId, entry] of [...undeclaredContexts.entries()].sort((left, right) =>
-    compareParts([left[0]], [right[0]]),
-  )) {
+  // In first-use order. A pre-sort by id would be dead code: every entry is
+  // located at the first anchor that used the id, so sortFindings separates
+  // these findings by pointer before any later key is reached.
+  for (const [contextId, entry] of undeclaredContexts) {
     findings.push(
       makeFinding({
         ruleId: 'context-undeclared',
@@ -292,9 +293,8 @@ export function auditAnchors({ anchors, targets, contexts, defaultLocale, limits
     )
   }
 
-  for (const [targetId, entry] of [...undeclaredTargets.entries()].sort((left, right) =>
-    compareParts([left[0]], [right[0]]),
-  )) {
+  // First-use order again, and dead for the same reason.
+  for (const [targetId, entry] of undeclaredTargets) {
     findings.push(
       makeFinding({
         ruleId: 'target-undeclared',
@@ -385,9 +385,9 @@ export function auditAnchors({ anchors, targets, contexts, defaultLocale, limits
   }
   counts.groups = reportedGroups.length
 
-  for (const entry of [...nameTargets.values()].sort((left, right) =>
-    compareParts([left.locale, left.context, left.name], [right.locale, right.context, right.name]),
-  )) {
+  // And once more: each name key records the first anchor that used it, so
+  // these findings are already distinct by pointer.
+  for (const entry of nameTargets.values()) {
     if (entry.targets.size < 2) continue
     counts.ambiguous += 1
     const listed = [...entry.targets].sort((left, right) => compareParts([left], [right]))
