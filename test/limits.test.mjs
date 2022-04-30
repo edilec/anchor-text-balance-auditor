@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -103,6 +103,49 @@ test('maxFileBytes is checked before the file is read', async (t) => {
   const accepted = await auditExportFile({ exportFile: path, limits: { maxFileBytes: 65536 } })
   assert.deepEqual(ruleIds(accepted), [])
   assert.equal(accepted.summary.checked, 1)
+})
+
+test('maxFileBytes is a boundary: a file of exactly the limit is read', async (t) => {
+  const directory = await workspace(t)
+  const path = join(directory, 'export.json')
+  await writeFile(path, JSON.stringify(data()))
+  const { size } = await stat(path)
+
+  // Exactly the limit is inside it. The off-by-one here is a false refusal:
+  // a legitimate export stops being read, and exit 0 becomes exit 2.
+  const exact = await auditExportFile({ exportFile: path, limits: { maxFileBytes: size } })
+  assert.deepEqual(ruleIds(exact), [])
+  assert.equal(exact.status, 'pass')
+  assert.equal(exact.summary.checked, 1)
+
+  const oneShort = await auditExportFile({ exportFile: path, limits: { maxFileBytes: size - 1 } })
+  assert.deepEqual(ruleIds(oneShort), ['file-too-large'])
+  assert.equal(oneShort.status, 'incomplete')
+  assert.equal(
+    oneShort.findings[0].message,
+    `Export file is ${size} bytes, above the ${size - 1} byte limit; it was not read.`,
+  )
+})
+
+test('maxFindings is a boundary: a report holding exactly the limit is whole', () => {
+  const twoDefects = {
+    anchors: [
+      { from: '/a', to: '/docs/', context: 'body' },
+      { from: '/b', to: '/docs/', context: 'body' },
+    ],
+  }
+
+  // Two findings under a limit of two is a complete report of a failed audit.
+  // The off-by-one adds a truncation notice for nothing dropped and turns a
+  // fail (exit 1) into an incomplete run (exit 2).
+  const exact = audit(twoDefects, { maxFindings: 2 })
+  assert.deepEqual(ruleIds(exact), ['empty-anchor-text', 'empty-anchor-text'])
+  assert.equal(exact.summary.errors, 2)
+  assert.equal(exact.status, 'fail')
+
+  const oneShort = audit(twoDefects, { maxFindings: 1 })
+  assert.deepEqual(ruleIds(oneShort), ['empty-anchor-text', 'too-many-findings'])
+  assert.equal(oneShort.status, 'incomplete')
 })
 
 test('maxIncludeDepth stops the nesting and says which shard was not read', async (t) => {
