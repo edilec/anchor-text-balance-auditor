@@ -153,9 +153,37 @@ test('names are folded for grouping without locale-dependent case rules', () => 
   assert.equal(normaliseName('  Read   the\nGuide '), 'read the guide')
   assert.equal(normaliseName('READ THE GUIDE'), normaliseName('read the guide'))
   assert.notEqual(normaliseName('read the guides'), normaliseName('read the guide'))
-  // toLocaleLowerCase would map I to a dotless i under a Turkish host locale;
-  // toLowerCase does not, so two hosts group the same export identically.
+
+  // toLowerCase is locale-independent by specification; toLocaleLowerCase is
+  // not, and a Turkish fold maps I to a dotless i, so two hosts would group
+  // the same export differently.
+  //
+  // The assertion has to name the Turkish fold EXPLICITLY. Reading
+  // normaliseName('INDEX') === 'index' on its own cannot fail, because the
+  // no-argument toLocaleLowerCase() follows V8's host default locale and
+  // returns "index" even when ICU resolves the locale to tr-TR from the
+  // environment -- so a swap to the no-argument form is indistinguishable
+  // here, while a swap to an explicit locale is caught.
+  assert.equal('INDEX'.toLocaleLowerCase('tr'), '\u0131ndex')
   assert.equal(normaliseName('INDEX'), 'index')
+  assert.notEqual(normaliseName('INDEX'), 'INDEX'.toLocaleLowerCase('tr'))
+})
+
+test('two spellings of one name are one variant, whatever the host folds like', () => {
+  // The fold is not decoration: it decides whether these two anchors are one
+  // repeated variant or two separate ones, and under a Turkish fold "INDEX"
+  // and "index" would stop being the same name.
+  const report = audit([
+    { ...base, from: '/a', text: 'INDEX' },
+    { ...base, from: '/b', text: 'index' },
+    { ...base, from: '/c', text: 'Index' },
+  ])
+
+  assert.deepEqual(ruleIds(report), [])
+  assert.deepEqual(
+    report.groups[0].variants.map((variant) => [variant.name, variant.count, variant.pages]),
+    [['index', 3, 3]],
+  )
 })
 
 test('an anchor is placed in exactly one variant per target, context and locale', () => {

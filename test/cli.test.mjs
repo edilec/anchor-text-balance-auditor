@@ -54,7 +54,15 @@ test('the clean example passes and shows the navigation distinction', async () =
   assert.match(result.stdout, /status pass/)
   assert.match(result.stdout, /5 image-only but named/)
   assert.match(result.stdout, /navigation-repetition-expected/)
-  assert.equal(result.stdout.includes('over-repeated'), true)
+  // The distinction, stated two ways: the summary counts the repetition as
+  // navigational and NO over-repetition finding is raised. Asserting that the
+  // word "over-repeated" appears is not a test -- the fourth summary line
+  // carries it in every report ever printed, findings or none.
+  assert.match(
+    result.stdout,
+    /group\(s\): 0 over-repeated, 2 expected navigation repeat\(s\), 0 ambiguous, 0 misleading\./,
+  )
+  assert.equal(result.stdout.includes('over-repeated-anchor-text'), false)
   assert.equal(result.stderr, '')
 })
 
