@@ -222,6 +222,40 @@ test('maxListed bounds every list that reaches the output, and says how many it 
   assert.deepEqual(variant.sources, ['/page-0', '/page-1'])
 })
 
+test('a variant samples its sources and never claims the sample is the whole', () => {
+  // `sources` is the one bounded list in the report that carries no "(+N more)"
+  // marker, because it is not a finding: the exact `count` and the exact
+  // `pages` stand beside it and say what it sampled from. The README and the
+  // catalog both promise that, so a slice that silently shortened `count` --
+  // or an unbounded list -- has to fail here.
+  const report = audit({ anchors: anchorsTo('/docs/', 14) }, { maxEditorialRepeats: 99 })
+  const variant = report.groups[0].variants[0]
+
+  assert.equal(variant.count, 14)
+  assert.equal(variant.pages, 14)
+  assert.equal(variant.sources.length, DEFAULT_LIMITS.maxListed)
+  assert.deepEqual(variant.sources, [
+    '/page-0',
+    '/page-1',
+    '/page-10',
+    '/page-11',
+    '/page-12',
+    '/page-13',
+    '/page-2',
+    '/page-3',
+    '/page-4',
+    '/page-5',
+  ])
+  assert.equal(report.status, 'pass')
+
+  // The other side of the promise: a bounded list that IS a finding says how
+  // many ids it did not show.
+  const undeclared = audit({ anchors: anchorsTo('/undeclared', 14, 'elsewhere') }, {})
+  const finding = undeclared.findings.find((entry) => entry.ruleId === 'target-undeclared')
+  assert.match(finding.evidence, /^\/page-0, .* \(\+4 more\)$/)
+  assert.match(finding.message, /linked from 14 anchor\(s\)/)
+})
+
 test('maxFindings truncates deterministically and the notice survives the truncation', () => {
   const report = audit(
     {

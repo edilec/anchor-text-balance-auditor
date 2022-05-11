@@ -84,13 +84,14 @@ asserts the table against the documented catalog in both directions.
 | Code | Meaning | stdout |
 | ---: | --- | --- |
 | 0 | Every audited anchor passed and the evidence was complete. | report |
-| 1 | The audit failed: at least one error-severity finding. | report |
+| 1 | The audit failed: an error-severity finding, and no evidence missing. | report |
 | 2 | Invalid usage. | **empty** |
 | 2 | Input that could not be read or decoded, or evidence that was missing. | `status: "incomplete"` report |
 
 A usage error means the run never had a subject, so there is nothing to report about. An unreadable
 input means the run had a subject and failed to obtain evidence about it — a consumer piping stdout
-must handle both.
+must handle both. `incomplete` outranks `fail`, so a rule that is error-severity **and** missing
+evidence — `export-invalid`, `file-too-large`, any `too-many-*` — exits 2, never 1.
 
 ## Limits and non-goals
 
@@ -121,8 +122,11 @@ This tool **cannot** tell you:
   errors.
 
 Every limit — anchors, targets, contexts, bytes per file, include depth, include files, listed ids,
-findings, editorial repeats — is enforced, reported when it is hit, and covered by a test.
-Exceeding one is never a silent truncation.
+findings, editorial repeats — is enforced, reported when it is hit, and covered by a test. Dropped
+evidence is never silent: each of those limits raises the finding named in the catalog, and a
+bounded list inside a finding ends in `(+N more)` rather than trailing off. The one bounded list
+that is not itself a finding — a variant's `sources` — stands beside the exact `count` and `pages`
+it samples, so what it omits stays readable from the report.
 
 ## Verify
 

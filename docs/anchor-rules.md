@@ -166,7 +166,9 @@ Anchor variants are grouped by **target, context kind and locale**. Each group i
 
 `name` is the folded grouping key, `example` the first name seen for it, `count` the exact
 number of anchors, `pages` the number of distinct `from` pages, and `sources` a list of `from`
-pages bounded by `maxListed` — `count` is exact even when `sources` is truncated.
+pages bounded by `maxListed` — `count` is exact even when `sources` is truncated — `sources` is the one bounded list in the report
+that carries no `(+N more)` marker of its own, because `count` and `pages` sit beside it and say
+exactly what it sampled from.
 
 An anchor is scored only when its name, its context kind and its locale are all known. Anything
 else is counted in `summary.unscoredAnchors` and has already produced a finding that forces an
@@ -274,13 +276,20 @@ carries diagnostics.
 | Code | Meaning | stdout |
 | ---: | --- | --- |
 | 0 | Every audited anchor passed and the evidence was complete. | report |
-| 1 | The export failed the audit: at least one error-severity finding. | report |
+| 1 | The export failed the audit: an error-severity finding, and no evidence missing. | report |
 | 2 | Invalid usage. | **empty** |
 | 2 | Input that could not be read, decoded or parsed, or evidence that was missing. | a report with `status: "incomplete"` |
 
 A usage error means the run never had a subject, so there is nothing to report about. An unreadable
 input means the run had a subject and failed to obtain evidence about it, which is exactly what
 `incomplete` exists to say — and a consumer needs that report to know which input was not read.
+
+`incomplete` outranks `fail`. Thirteen rules in the catalog are error-severity **and** marked
+incomplete — `empty-export`, `export-invalid`, `export-undecodable`, `export-unreadable`,
+`file-too-large`, `include-depth-exceeded`, `path-escapes-root`, `unsafe-include-path` and the five
+`too-many-*` limits — and every one of them exits 2, not 1. A report that could not see everything
+does not deliver a verdict on everything. Each rule's exit code is asserted against a real run in
+`test/severity-behaviour.test.mjs`.
 
 ## What this tool cannot conclude
 

@@ -340,11 +340,23 @@ test('the pinned outcomes are the ones the table and the incomplete list imply',
 })
 
 test('an error-severity rule that is also missing evidence exits 2, not 1', () => {
-  // The exit-code tables say row 1 is "at least one error-severity finding and
-  // nothing missing", because incomplete outranks fail. export-invalid is the
+  // Row 1 of both exit-code tables says "an error-severity finding, and no
+  // evidence missing", because incomplete outranks fail. export-invalid is the
   // proof: severity error, exit 2.
   assert.equal(RULE_SEVERITY['export-invalid'], 'error')
   assert.equal(EXPECTED['export-invalid'].code, 2)
   assert.equal(EXPECTED['empty-anchor-text'].code, 1)
   assert.equal(INCOMPLETE_RULES.includes('empty-anchor-text'), false)
+
+  // docs/anchor-rules.md names all thirteen of them in that paragraph, so the
+  // count is asserted here rather than left to rot.
+  const errorAndIncomplete = INCOMPLETE_RULES.filter((rule) => RULE_SEVERITY[rule] === 'error')
+  assert.equal(errorAndIncomplete.length, 13)
+  for (const ruleId of errorAndIncomplete) assert.equal(EXPECTED[ruleId].code, 2)
+
+  // And exactly three rules reach exit 1: the defects this tool exists to find.
+  assert.deepEqual(
+    Object.keys(EXPECTED).filter((ruleId) => EXPECTED[ruleId].code === 1),
+    ['empty-anchor-text', 'image-anchor-unnamed', 'misleading-anchor-text'],
+  )
 })
