@@ -77,7 +77,9 @@ field and turn a real failure green. The full format is in
 
 Twenty-four rules in total, including the ones that refuse an input rather than judge it. Severity
 comes from a single frozen `ruleId -> severity` table; an unknown rule id throws, and the test suite
-asserts the table against the documented catalog in both directions.
+asserts the table against the documented catalog in both directions. It also runs every one of the
+twenty-four rules through the CLI and asserts the `status` and exit code that come back, because
+declarations agreeing with each other can be flipped together and an exit code cannot.
 
 ## Exit codes
 

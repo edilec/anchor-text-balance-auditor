@@ -207,6 +207,12 @@ Severity comes from one frozen `ruleId -> severity` table in `src/rules.mjs`. An
 throws rather than defaulting to something harmless, and the test suite asserts this catalog and
 that table against each other in both directions, including the incomplete column.
 
+That agreement is not the pin. A table entry, a catalog row and a hand-written assertion can be
+flipped in one edit and still agree, so `test/severity-behaviour.test.mjs` drives every rule in this
+catalog through the CLI with a real export and asserts the `status` and the exit code that come
+back: `fail` and 1 for a defect found in evidence the tool had, `incomplete` and 2 for evidence it
+never obtained, `pass` and 0 for a warning or an info finding on its own.
+
 **Why `over-repeated-anchor-text` and `ambiguous-anchor-text` are warnings.** Both are policy
 signals: the repetition threshold is a number somebody chose, and two links sharing wording may be
 deliberate. `empty-anchor-text`, `image-anchor-unnamed` and `misleading-anchor-text` are errors
