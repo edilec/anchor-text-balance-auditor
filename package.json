@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "lint": "node --check src/rules.mjs && node --check src/export.mjs && node --check src/anchors.mjs && node --check src/index.mjs && node --check bin/anchor-text-balance-auditor.mjs && node --check test/anchors.test.mjs && node --check test/grouping.test.mjs && node --check test/export.test.mjs && node --check test/incomplete.test.mjs && node --check test/severity-table.test.mjs && node --check test/severity-behaviour.test.mjs && node --check test/determinism.test.mjs && node --check test/limits.test.mjs && node --check test/cli.test.mjs",
+    "lint": "node --check src/rules.mjs && node --check src/export.mjs && node --check src/anchors.mjs && node --check src/index.mjs && node --check bin/anchor-text-balance-auditor.mjs && node --check test/anchors.test.mjs && node --check test/grouping.test.mjs && node --check test/export.test.mjs && node --check test/incomplete.test.mjs && node --check test/severity-table.test.mjs && node --check test/severity-behaviour.test.mjs && node --check test/determinism.test.mjs && node --check test/limits.test.mjs && node --check test/parse-leak.test.mjs && node --check test/cli.test.mjs",
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/**",
     "example": "node bin/anchor-text-balance-auditor.mjs --export examples/site-clean.json",

@@ -160,6 +160,37 @@ export function excerpt(value) {
   return `${flattened.slice(0, EVIDENCE_LIMIT)}...`
 }
 
+const QUOTED_INPUT = /^Unexpected token (.{1,12}?), (?:\.\.\.)?".*"(?:\.\.\.)? is not valid JSON$/s
+const PARSE_POSITION = /\bat position \d+(?: \(line \d+ column \d+\))?$/
+const PARSE_EMPTY = /^Unexpected end of JSON input$/
+
+/**
+ * The useful half of a `JSON.parse` failure, without the export content V8
+ * puts in the other half.
+ *
+ * V8 reports a parse failure in two shapes. One names a position and no
+ * content at all. The other QUOTES THE INPUT back:
+ * `Unexpected token 'A', "AKIAIOSFODNN7EXAMPLE" is not valid JSON` -- the
+ * whole document when it is short, a window around the offence when it is not.
+ * An export short enough to be only a credential is therefore reproduced in
+ * full by its own error message, and `excerpt` cannot help: it trims from the
+ * END, and the quoted span sits at the front.
+ *
+ * The quoting shape is recognised FIRST. Looking for `at position` first would
+ * be defeated by an export that merely CONTAINS that phrase, because the
+ * quoted span would then be kept as though V8 had written it.
+ *
+ * Only the offending token survives from the quoting shape. The quoted span
+ * never leaves this function.
+ */
+export function parseFailureDetail(error) {
+  const message = String(error?.message ?? '')
+  const quoted = QUOTED_INPUT.exec(message)
+  if (quoted !== null) return `unexpected token ${quoted[1]}`
+  if (PARSE_POSITION.test(message) || PARSE_EMPTY.test(message)) return message
+  return 'the export could not be parsed as JSON'
+}
+
 /**
  * Join a bounded list of export-derived strings for a message or evidence
  * field. Exceeding the limit says so rather than trailing off silently.

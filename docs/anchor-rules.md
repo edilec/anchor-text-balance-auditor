@@ -269,6 +269,15 @@ U+2029 and U+0085, so a raw byte left in a message would hand a line-oriented co
 report the line the human report refused. Flattening happens where findings and groups are built,
 so there is one place to remove it from rather than one per printing site.
 
+**A parse failure does not quote the export back.** V8 reports an invalid document two ways, and
+one of them embeds the input: `Unexpected token 'A', "AKIAIOSFODNN7EXAMPLE" is not valid JSON`
+reproduces a short export in full, and a longer one through a window around the offence. That
+message reaches `export-invalid`, which is the finding raised for exactly the documents whose
+content is least trustworthy. Flattening and excerpting do not help, because both work from the
+end of a string while the quoted span sits at the front. Only the useful half is kept: the
+position, line and column where V8 gave them, and the offending token where it did not. The quoted
+span is removed before the message is built.
+
 Characters that are merely invisible — a zero-width space, a soft hyphen — are left exactly as they
 arrived: they cannot forge a line or reverse one, and a name made of them still counts as a name.
 Nothing is deleted, so text around a flattened character stays readable, and lengths are bounded

@@ -45,6 +45,7 @@ export {
   excerpt,
   forcesIncomplete,
   listSome,
+  parseFailureDetail,
   severityOf,
   singleLine,
   validateLimits,

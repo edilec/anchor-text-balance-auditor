@@ -15,7 +15,13 @@
 import { readFile, realpath, stat } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 
-import { CONTEXT_KINDS, EXPORT_SCHEMA_VERSION, isRecord, makeFinding } from './rules.mjs'
+import {
+  CONTEXT_KINDS,
+  EXPORT_SCHEMA_VERSION,
+  isRecord,
+  makeFinding,
+  parseFailureDetail,
+} from './rules.mjs'
 
 const DOCUMENT_KEYS = Object.freeze([
   'anchors',
@@ -456,7 +462,7 @@ async function readDocument(realPath, file, limits) {
     return {
       finding: makeFinding({
         ruleId: 'export-invalid',
-        message: `Export file is not valid JSON: ${error.message}`,
+        message: `Export file is not valid JSON: ${parseFailureDetail(error)}.`,
         file,
       }),
     }
