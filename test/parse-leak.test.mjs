@@ -138,3 +138,76 @@ test('a non-Error, and an error with no message, still produce a usable detail',
   assert.equal(parseFailureDetail({}), 'the export could not be parsed as JSON')
   assert.equal(parseFailureDetail(new Error('')), 'the export could not be parsed as JSON')
 })
+
+/**
+ * The error V8 raises for an export that must not parse, so every case below
+ * is pinned against a real message rather than a hand-written one.
+ */
+function refusal(document) {
+  try {
+    JSON.parse(document)
+  } catch (error) {
+    return error
+  }
+  throw new Error(`${JSON.stringify(document)} parsed, so it pins nothing`)
+}
+
+/**
+ * No prefix of the export four characters or longer survives into the detail.
+ * Four rather than the eight `assertNoCanary` uses, because V8 quotes only the
+ * first ten characters of a long export: a check for ten would still pass
+ * against a detail carrying `AKIA`.
+ */
+function assertNoPrefixOf(document, detail, label) {
+  for (let length = 4; length <= document.length; length += 1) {
+    const prefix = document.slice(0, length)
+    assert.equal(
+      detail.includes(prefix),
+      false,
+      `${label}: the detail carries ${JSON.stringify(prefix)} -- ${JSON.stringify(detail)}`
+    )
+  }
+}
+
+test('an export whose own text reads "at position 1" is not sliced back out', () => {
+  const document = 'at position 1'
+  const message = refusal(document).message
+  assert.equal(message.includes(document), true, 'V8 no longer quotes the input; this pin needs revisiting')
+
+  const detail = parseFailureDetail(refusal(document))
+  assert.equal(detail.includes('"'), false, `a quote means a quoted span survived: ${JSON.stringify(detail)}`)
+  assert.equal(detail.includes(document), false, `the export came back out: ${JSON.stringify(detail)}`)
+  // Pinned exactly. Recognising the quoting shape first is what makes this both
+  // leak-free AND still a diagnostic: an ordering revert that fell back to the
+  // generic sentence would hide the same defect behind a passing leak check.
+  assert.equal(detail, "unexpected token 'a'")
+})
+
+test('a long export whose first ten characters are sensitive keeps none of them', () => {
+  // V8 quotes a ten-character prefix once the export is long enough, so the
+  // head is exactly the part at risk.
+  const document = `${CANARY} and then a great many more characters that never parse`
+  const detail = parseFailureDetail(refusal(document))
+  assert.equal(detail.includes('"'), false)
+  assertNoPrefixOf(document, detail, 'long export')
+  assert.equal(detail, "unexpected token 'A'")
+})
+
+test('a quoted span carrying a newline is still recognised as a quoted span', () => {
+  // The quoting regex needs the `s` flag: without it `.*` stops at the line
+  // feed, the shape is missed, and the message falls through to a branch that
+  // was never meant to see it.
+  const document = '}x\n'
+  assert.equal(refusal(document).message.includes('\n'), true, 'the quoted span really does carry the newline')
+
+  const detail = parseFailureDetail(refusal(document))
+  assert.equal(detail.includes('"'), false)
+  assert.equal(detail.includes('\n'), false)
+  assert.equal(detail, "unexpected token '}'")
+})
+
+test('the position, line and column survive -- a detail that says nothing is a different defect', () => {
+  const detail = parseFailureDetail(refusal('{"schemaVersion": "1" "anchors": []}'))
+  assert.equal(detail, "Expected ',' or '}' after property value in JSON at position 22 (line 1 column 23)")
+  assert.equal(parseFailureDetail(refusal('')), 'Unexpected end of JSON input')
+})
