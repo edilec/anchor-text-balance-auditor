@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1",
+  "site": "example handbook",
+  "defaultLocale": "en",
+  "include": ["anchors/blog.json"],
+  "contexts": [
+    { "id": "header-nav", "kind": "navigation", "label": "Site header" },
+    { "id": "footer-nav", "kind": "navigation", "label": "Site footer" },
+    { "id": "article-body", "kind": "editorial", "label": "In-body prose" }
+  ],
+  "targets": [
+    { "id": "/", "title": "Home" },
+    { "id": "/docs/", "title": "Documentation", "aliases": ["Docs"] },
+    { "id": "/pricing", "title": "Pricing" },
+    { "id": "/contact", "title": "Contact" },
+    { "id": "/blog/link-text", "title": "Writing link text that says where it goes" }
+  ],
+  "anchors": [
+    { "from": "/", "to": "/", "context": "header-nav", "hasImage": true, "imageAlt": "Example handbook home" },
+    { "from": "/docs/", "to": "/", "context": "header-nav", "hasImage": true, "imageAlt": "Example handbook home" },
+    { "from": "/pricing", "to": "/", "context": "header-nav", "hasImage": true, "imageAlt": "Example handbook home" },
+    { "from": "/contact", "to": "/", "context": "header-nav", "hasImage": true, "imageAlt": "Example handbook home" },
+    { "from": "/blog/link-text", "to": "/", "context": "header-nav", "hasImage": true, "imageAlt": "Example handbook home" },
+
+    { "from": "/", "to": "/docs/", "context": "header-nav", "text": "Docs" },
+    { "from": "/docs/", "to": "/docs/", "context": "header-nav", "text": "Docs" },
+    { "from": "/pricing", "to": "/docs/", "context": "header-nav", "text": "Docs" },
+    { "from": "/contact", "to": "/docs/", "context": "header-nav", "text": "Docs" },
+    { "from": "/blog/link-text", "to": "/docs/", "context": "header-nav", "text": "Docs" },
+
+    { "from": "/", "to": "/pricing", "context": "header-nav", "text": "Pricing" },
+    { "from": "/docs/", "to": "/pricing", "context": "header-nav", "text": "Pricing" },
+    { "from": "/pricing", "to": "/contact", "context": "footer-nav", "text": "Contact" },
+    { "from": "/contact", "to": "/contact", "context": "footer-nav", "text": "Contact" },
+
+    { "from": "/", "to": "/blog/link-text", "context": "article-body", "text": "Writing link text that says where it goes" },
+    { "from": "/docs/", "to": "/pricing", "context": "article-body", "text": "what each plan includes" },
+    { "from": "/contact", "to": "/docs/", "context": "article-body", "text": "the reference documentation", "title": "ignored when text is present" }
+  ]
+}
